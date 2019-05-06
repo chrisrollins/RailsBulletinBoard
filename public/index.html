@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Bulletin Board</title>
+	<script type="text/javascript" src="http.js"></script>
+	<script type="text/javascript" src="app_client.js"></script>
+	<script type="text/javascript">
+		(function()
+		{
+			const userPromise = AppClient.getUser();
+			let user = undefined;
+
+			window.onload = async function()
+			{
+				user = await userPromise;
+				hideLoader();
+				/*const welcomeContent = document.createDocumentFragment();
+				welcomeContent.appendChild(document.createTextNode(`Welcome to Bulletin Board${(user.loggedin) ? (", " + user.username) : ""}!`));
+				welcomeContent.appendChild(document.createElement("br"));
+				welcomeContent.appendChild(document.createTextNode((user.loggedin) ? greetingMessage() : "Login to participate on Bulletin Board."));
+				welcome_div.appendChild(welcomeContent);*/
+				welcome_line_1.innerText = `Welcome to Bulletin Board${(user.loggedin) ? (", " + user.username) : ""}!`;
+				welcome_line_2.innerText = (user.loggedin) ? greetingMessage() : "Login to participate on Bulletin Board.";
+				if(user.loggedin)
+				{					
+					showLoggedInVisibleElements();
+					prepareNavBar();
+					prepareNewPost();
+					preparePostList();
+				}
+				else
+				{
+					showLoggedOutVisibleElements();
+					prepareLoginAndSignup();
+					//todo: show blurred out post list structure
+				}
+			};
+
+			function refreshContent()
+			{
+				location.reload();
+			}
+
+			function showLoggedInVisibleElements()
+			{
+				for(const element of document.querySelectorAll(".logged_in_visible")) { element.style.display = "initial"; }
+				for(const element of document.querySelectorAll(".logged_out_visible")) { element.style.display = "none"; }
+			}
+
+			function showLoggedOutVisibleElements()
+			{
+				for(const element of document.querySelectorAll(".logged_in_visible")) { element.style.display = "none"; }
+				for(const element of document.querySelectorAll(".logged_out_visible")) { element.style.display = "initial"; }
+			}
+
+			function greetingMessage()
+			{
+				const messages = [
+					"Check out today's posts!",
+					"There's some good stuff today.",
+					"How are you doing today?",
+					"What's on your mind?"				
+				];
+				return messages[~~(Math.random() * messages.length)];
+			}
+
+			function hideLoader()
+			{				
+				loading_spinner.style.opacity = "0";
+				loading_spinner.style.pointerEvents = "none";
+			}
+
+			function showLoader()
+			{
+				loading_spinner.style.opacity = "1";
+				loading_spinner.style.pointerEvents = "initial";				
+			}
+
+			async function prepareNavBar()
+			{
+				logout_button.onclick = async (event) =>
+				{
+					await AppClient.logout();
+					refreshContent();
+				}
+			}
+
+			async function preparePostList()
+			{
+				let postIndex = 0;
+				let disableLoading = false;
+				async function loadPosts()
+				{
+					if(disableLoading) { return; }
+					disableLoading = true;
+					setTimeout(()=> { disableLoading = false }, 3000);
+					showLoader();
+					const result = await AppClient.getPosts({ start: postIndex });
+					hideLoader();
+					const posts = result ? result.posts.reverse() : [];
+					if(posts.length === 0) { return; }
+					postIndex += 10;
+					for(post of posts)
+					{
+						const postContainer = document.createElement("div");
+						const usernameContainer = document.createElement("div");
+						const messageContainer = document.createElement("div");
+						postContainer.className = "post_container";
+						usernameContainer.className = "post_username_container";
+						messageContainer.className = "post_message_container";
+						usernameContainer.innerText = post.username;
+						messageContainer.innerText = post.message;
+						postContainer.appendChild(usernameContainer);
+						postContainer.appendChild(messageContainer);
+						post_list_display.appendChild(postContainer);
+					}
+				}
+
+				await loadPosts();
+				more_posts_button.style.display = "initial";
+				more_posts_button.onclick = loadPosts;
+
+				window.onscroll = (event) => 
+				{
+					if(window.scrollY + window.innerHeight > content.scrollHeight) { loadPosts(); }					
+				}
+			}
+
+			async function prepareNewPost()
+			{
+				make_post_button.onclick = showPostBox;
+				new_post_cancel_button.onclick = hidePostBox;
+
+				post_button.onclick = async (event) =>
+				{
+					const message = new_post_message_entry.value;
+					if(message.length < 1) { return showError("Post must be at least 1 character long."); }
+					if(message.length > 1000) { return showError("Post cannot be longer than 1000 characters."); }
+					showLoader();
+					const response = await AppClient.newPost({message});
+					hideLoader();
+					//todo: give user link to post
+					refreshContent();
+				};
+
+				function showPostBox()
+				{
+					new_post_div.style.display = "block";					
+				}
+
+				function hidePostBox()
+				{
+					new_post_div.style.display = "none";					
+				}
+			}
+
+			async function prepareLoginAndSignup()
+			{
+				login_button.onclick = async (event) =>
+				{
+					if(!validateLoginInput()) { return; }					
+					try { await AppClient.login(convertFields(username_login_entry, password_login_entry)); }
+					catch(e) { return showError("User credentials were not found."); }
+					await confirmLogin();					
+				};
+
+				signup_button.onclick = async (event) =>
+				{
+					if(!validateSignupInput()) { return; }
+					try { await AppClient.signup(convertFields(username_signup_entry, password_signup_entry)); }
+					catch(e) { return showError("Username already exists or is invalid."); }
+					await confirmLogin();
+				};
+
+				function convertFields(...inputElements)
+				{
+					const obj = {};
+					for(const element of inputElements)
+					{
+						obj[element.name] = element.value;
+					}
+					return obj;
+				}
+
+				function validateLoginInput()
+				{
+					let result = true;
+					if(username_login_entry.value.length < 3) { result = showError("Username must be at least 3 characters long."); }
+					if(password_login_entry.value.length < 6) { result = showError("Password must be at least 6 characters long."); }
+					return result;
+				}
+
+				function validateSignupInput()
+				{
+					let result = true;
+					if(password_signup_entry.value !== confirm_password_signup_entry.value){ result = showError("Password and Confirm Password must match."); }
+					if(password_signup_entry.value.length < 6) { result = showError("Password must be at least 6 characters long."); }
+					if(username_signup_entry.value.length < 3) { result = showError("Username must be at least 3 characters long."); }					
+					return result;
+				}
+
+				async function confirmLogin()
+				{
+					const user = await AppClient.getUser();
+					if(user.loggedin) { refreshContent(); }
+					else { showError("Login operation failed. Check the other error messages and then try again."); }
+				}
+			}
+
+			function showError(errorMessage)
+			{
+				const fadeTime = 1000;
+				const delay = 6000;
+				const el = document.createElement("div");
+				const text = document.createElement("span");
+				el.appendChild(text);
+				text.innerText = errorMessage;
+				text.style.backgroundColor = "#fff";
+				text.style.paddingLeft = "10px";
+				text.style.paddingRight = "10px";
+				el.style.marginBottom = "2px";
+				el.style.position = "relative";
+				el.style.top = "0px";
+				el.style.opacity = "1"
+				el.style.color = "#ff2222"
+				el.style.transition = `top ${fadeTime}ms, opacity ${fadeTime}ms`;
+				error_display.appendChild(el);
+				setTimeout(()=>{
+					el.style.top = "-50px";
+					el.style.opacity = "0"
+				}, delay);
+				setTimeout(()=>{
+					error_display.removeChild(el);
+				}, delay + fadeTime);
+				return false;
+			}
+		})();
+
+
+	</script>
+	<link rel="stylesheet" href="base.css">
+	<style type="text/css">
+	#new_post_div
+	{
+		position: fixed;
+		width: 50vw;
+		left: 25vw;
+		top: 5vw;
+		background-color: rgba(200, 200, 210, 0.8);
+		text-align: center;
+		border-radius: 25px;
+	}
+	#new_post_bar
+	{
+		background-color: #444466;
+		color: #fff;
+		margin-bottom: 5px;
+	}
+	#new_post_message_entry
+	{
+		border: none;
+		padding: 5px;
+	}
+	#welcome_div
+	{
+		font-size: 28px;
+		background-color: rgba(255, 255, 255, 0.8);
+		margin-bottom: 50px;
+		padding-top: 15px;
+		padding-bottom: 15px;
+	}
+	#login_entry_table, #signup_entry_table
+	{
+		display: inline-block;
+		background-color: rgba(255, 255, 255, 0.8);
+		padding: 10px;
+	}
+	tbody, tr
+	{
+		width:100%;
+	}
+	#error_display
+	{
+		padding-top: 100px;
+	}
+	#loading_spinner
+	{
+		position: fixed;
+		top: 15vh;
+		width: 10vw;
+		height: 10vw;
+		left: 45vw;
+		filter: brightness(1.1);
+		opacity: 1;
+		transition: opacity 500ms;
+	}
+	#post_list_display
+	{
+		min-height: 1vh;
+		padding-top: 20px;
+	}
+	.post_container
+	{
+		margin-left: 10%;
+		width: 80%;
+		height: 250px;
+		margin-bottom: 5px;
+	}
+	.post_username_container
+	{
+		font-weight: bold;
+		height: 10%;
+		padding: 3px;
+		text-align: left;
+		background-color: rgba(255, 255, 255, 0.5);
+	}
+	.post_username_container::after
+	{
+		content: " posted:";
+		font-weight: normal;
+	}
+	.post_message_container
+	{
+		height: 90%;
+		padding: 7px;
+		text-align: left;
+		background-color: rgba(255, 255, 255, 0.8);
+	}
+	</style>
+</head>
+<body>
+	<object id="loading_spinner" type="image/svg+xml" data="loading.svg">
+	Loading...
+	</object>
+	<div id="nav_bar"><div class="nav_bar_section"></div><div class="nav_bar_section"></div><div class="nav_bar_section"><button id="logout_button" class="logged_in_visible">log out</button></div></div>
+	<div id="content">
+		<noscript><h3>This page requires JavaScript</h3></noscript>		
+		<div id="welcome_div">
+			<div id="welcome_line_1">&nbsp;</div>
+			<div id="welcome_line_2">&nbsp;</div>
+		</div>
+
+		<!-- logged in view -->
+		<button class="logged_in_visible" id="make_post_button">Make a post</button>
+		<div id="post_list_display"></div>
+		<button id="more_posts_button" class="hidden">More posts</button>
+
+		<!-- logged out view -->
+		<div id="login_signup_div" class="logged_out_visible">
+			<table id="login_entry_table">
+				<thead><th colspan="2"><h4>Log in</h4></th></thead>
+				<tbody>
+					<tr><td>&nbsp;</td></tr>
+					<tr><td style="text-align: left"><label for="username_login_entry">Username: </label></td><td><input type="text" name="username" id="username_login_entry"></td></tr>
+					<tr><td style="text-align: left"><label for="password_login_entry">Password: </label></td><td><input type="password" name="password" id="password_login_entry"></td></tr>
+					<tr><td>&nbsp;</td></tr>
+					<tr><td colspan="2"><button id="login_button">Log in</button></td></tr>
+				</tbody>
+			</table>
+			<table id="signup_entry_table">
+				<thead><th colspan="2"><h4>Sign up</h4></th></thead>
+				<tbody>
+					<tr><td>&nbsp;</td></tr>
+					<tr><td style="text-align: left"><label for="username_signup_entry">Username: </label></td><td><input type="text" name="username" id="username_signup_entry"></td></tr>
+					<tr><td style="text-align: left"><label for="password_signup_entry">Password: </label></td><td><input type="password" name="password" id="password_signup_entry"></td></tr>
+					<tr><td style="text-align: left"><label for="confirm_password_signup_entry">Confirm Password: </label></td><td><input type="password" name="password_confirmation" id="confirm_password_signup_entry"></td></tr>
+					<tr><td colspan="2"><button id="signup_button">Sign up</button></td></tr>
+				</tbody>
+			</table>
+			<div id="error_display"></div>
+		</div>
+	</div>
+	<div id="new_post_div" class="hidden">
+		<div id="new_post_bar"><h3>New Post</h3></div>
+		<div><textarea name="message" id="new_post_message_entry" rows="40" cols="100"></textarea></div>
+		<div><button id="post_button">Post</button><button id="new_post_cancel_button">Cancel</button></div>
+	</div>
+</body>
+</html>
