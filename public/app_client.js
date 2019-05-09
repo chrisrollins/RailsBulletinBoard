@@ -21,19 +21,19 @@ const AppClient = (function()
 			try
 			{				
 				const res = await HTTP.post("api/public/who_am_i");
-				user = { username: res.body.username, loggedin: true };
+				user = { username: res.body.username, level: res.body.level, loggedin: true };
 			}
 			catch(e)
 			{
-				user = { username: "", loggedin: false };
+				user = { username: "", level: "", loggedin: false };
 			}
 		}
 		return Object.assign({}, user);
 	}
 
-	async function signup({username, password})
+	async function signup({username, password, level})
 	{
-		const promise = HTTP.post("api/public/signup", { username, password, password_confirmation: password });
+		const promise = HTTP.post(`api/public/signup${(level) ? "_" + level : ""}`, { username, password, password_confirmation: password });
 		pendingRequests.push(promise);
 		return await getUser();
 	}
@@ -68,7 +68,7 @@ const AppClient = (function()
 		pendingRequests.push(promise);
 		awaitPending();
 		const res = await promise;		
-		return { username: res.body.username, id: res.body.id };
+		return { username: res.body.username, level: res.body.level, id: res.body.id };
 	}
 
 	async function getPosts({start})

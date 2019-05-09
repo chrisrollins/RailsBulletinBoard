@@ -14,11 +14,6 @@
 			{
 				user = await userPromise;
 				hideLoader();
-				/*const welcomeContent = document.createDocumentFragment();
-				welcomeContent.appendChild(document.createTextNode(`Welcome to Bulletin Board${(user.loggedin) ? (", " + user.username) : ""}!`));
-				welcomeContent.appendChild(document.createElement("br"));
-				welcomeContent.appendChild(document.createTextNode((user.loggedin) ? greetingMessage() : "Login to participate on Bulletin Board."));
-				welcome_div.appendChild(welcomeContent);*/
 				welcome_line_1.innerText = `Welcome to Bulletin Board${(user.loggedin) ? (", " + user.username) : ""}!`;
 				welcome_line_2.innerText = (user.loggedin) ? greetingMessage() : "Login to participate on Bulletin Board.";
 				if(user.loggedin)
@@ -97,23 +92,54 @@
 					showLoader();
 					const result = await AppClient.getPosts({ start: postIndex });
 					hideLoader();
-					const posts = result ? result.posts.reverse() : [];
+					const posts = result ? result.posts : [];
 					if(posts.length === 0) { return; }
 					postIndex += 10;
 					for(post of posts)
 					{
 						const postContainer = document.createElement("div");
 						const usernameContainer = document.createElement("div");
+						const usernameSpan = document.createElement("span");
+						const userlevelSpan= document.createElement("span");
 						const messageContainer = document.createElement("div");
 						postContainer.className = "post_container";
 						usernameContainer.className = "post_username_container";
 						messageContainer.className = "post_message_container";
-						usernameContainer.innerText = post.username;
+						usernameContainer.appendChild(usernameSpan);
+						usernameContainer.appendChild(userlevelSpan);
+						usernameContainer.style.backgroundColor = determineUserLevelColor(post.level);
+						usernameSpan.innerText = post.username + " ";
+						userlevelSpan.innerText = determineUserLevelLabel(post.level);
+						userlevelSpan.style.fontSize = "10px";
 						messageContainer.innerText = post.message;
 						postContainer.appendChild(usernameContainer);
 						postContainer.appendChild(messageContainer);
 						post_list_display.appendChild(postContainer);
 					}
+
+					function determineUserLevelColor(level)
+					{
+						switch(level)
+						{
+							case "Silver":
+								return "rgba(255, 255, 255, 0.6)";
+							break;
+							case "Gold":
+								return "rgba(255, 255, 160, 1.0)";
+							break;
+							case "Platinum":
+								return "rgba(255, 255, 255, 0.7)";
+							break;
+							default:
+								return "rgba(190, 190, 190, 0.5)";
+							break;
+						}
+					}
+
+					function determineUserLevelLabel(level)
+					{
+						return "(" + ((!level || level.toLowerCase() === "user") ? "Basic" : level ) + " User)";
+ 					}
 				}
 
 				await loadPosts();
@@ -167,7 +193,7 @@
 				signup_button.onclick = async (event) =>
 				{
 					if(!validateSignupInput()) { return; }
-					try { await AppClient.signup(convertFields(username_signup_entry, password_signup_entry)); }
+					try { await AppClient.signup(convertFields(username_signup_entry, password_signup_entry, user_level_select)); }
 					catch(e) { return showError("Username already exists or is invalid."); }
 					await confirmLogin();
 				};
@@ -354,6 +380,7 @@
 					<tr><td style="text-align: left"><label for="username_login_entry">Username: </label></td><td><input type="text" name="username" id="username_login_entry"></td></tr>
 					<tr><td style="text-align: left"><label for="password_login_entry">Password: </label></td><td><input type="password" name="password" id="password_login_entry"></td></tr>
 					<tr><td>&nbsp;</td></tr>
+					<tr><td>&nbsp;</td></tr>
 					<tr><td colspan="2"><button id="login_button">Log in</button></td></tr>
 				</tbody>
 			</table>
@@ -364,6 +391,16 @@
 					<tr><td style="text-align: left"><label for="username_signup_entry">Username: </label></td><td><input type="text" name="username" id="username_signup_entry"></td></tr>
 					<tr><td style="text-align: left"><label for="password_signup_entry">Password: </label></td><td><input type="password" name="password" id="password_signup_entry"></td></tr>
 					<tr><td style="text-align: left"><label for="confirm_password_signup_entry">Confirm Password: </label></td><td><input type="password" name="password_confirmation" id="confirm_password_signup_entry"></td></tr>
+					<tr><td style="text-align: left"><label>User Level: </label>
+						<td style="text-align: left">
+							<select id="user_level_select" name="level">
+								<option value="user">Basic (free)</option>
+								<option value="silver">Silver ($)</option>
+								<option value="gold">Gold ($$)</option>
+								<option value="platinum">Platinum ($$$)</option>
+							</select>
+						</td>
+					</tr>
 					<tr><td colspan="2"><button id="signup_button">Sign up</button></td></tr>
 				</tbody>
 			</table>

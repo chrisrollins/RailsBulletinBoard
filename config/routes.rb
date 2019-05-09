@@ -2,7 +2,10 @@ Rails.application.routes.draw do
 	namespace :api do
 		namespace :public do
 			post 'who_am_i', to: 'login#who_am_i'
-			post 'signup', to: 'login#signup'
+			post 'signup', to: 'users#create'
+			post 'signup_silver', to: 'silver_users#create'
+			post 'signup_gold', to: 'gold_users#create'
+			post 'signup_platinum', to: 'platinum_users#create'
 			post 'login', to: 'login#login'
 			post 'logout', to: 'login#logout'
 			get 'users', to: 'users#index'

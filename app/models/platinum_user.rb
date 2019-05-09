@@ -1,0 +1,2 @@
+class PlatinumUser < User
+end

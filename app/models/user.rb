@@ -4,6 +4,16 @@ class User < ApplicationRecord
 	validates :password, presence: true, length: { minimum: 6, maximum: 50 }
 	has_many :posts
 
+	attr_accessor :barname
+
+	after_initialize :initialize_level
+	def initialize_level
+		unless self.level then
+			cname = self.class.name
+			self.level = cname == 'User' ? cname : cname.sub(/User/, '')
+		end
+	end
+
 	def User.digest(string)
 	cost = ActiveModel::SecurePassword.min_cost ? BCrypt::Engine::MIN_COST : BCrypt::Engine.cost
 	BCrypt::Password.create(string, cost: cost)

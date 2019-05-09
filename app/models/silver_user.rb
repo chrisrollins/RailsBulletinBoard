@@ -1,0 +1,2 @@
+class SilverUser < User
+end

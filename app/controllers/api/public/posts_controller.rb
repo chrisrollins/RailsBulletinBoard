@@ -2,13 +2,13 @@ module Api
 	module Public
 		class PostsController < ApplicationController
 			def index
-				posts = Post.limit(10).order(id: :desc).offset(params[:start])
+				posts = Post.limit(10).order(id: :asc).offset(params[:start])
 				if posts
 					results = []
 					posts.each do |post|
 						user = User.find(post.user_id)
-						puts post
-						results.push({ message: post.message, username: user.username })
+						puts user.level
+						results.push({ message: post.message, username: user.username, level: user.level })
 					end
 					render json: { posts: results }, status: 200
 				else
@@ -36,7 +36,7 @@ module Api
 				post = Post.find(json_params["id"])
 				user = User.find(post.user_id)
 				if post
-					render json: { username: user.username, message: post.message }, status: 200
+					render json: { username: user.username, message: post.message, level: user.level }, status: 200
 				else
 					render json: {}, status: 404
 				end
