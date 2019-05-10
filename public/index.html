@@ -4,6 +4,8 @@
 	<title>Bulletin Board</title>
 	<script type="text/javascript" src="http.js"></script>
 	<script type="text/javascript" src="app_client.js"></script>
+	<script type="text/javascript" src="page_helper.js"></script>
+	<script type="text/javascript" src="post_helper.js"></script>
 	<script type="text/javascript">
 		(function()
 		{
@@ -27,14 +29,8 @@
 				{
 					showLoggedOutVisibleElements();
 					prepareLoginAndSignup();
-					//todo: show blurred out post list structure
 				}
 			};
-
-			function refreshContent()
-			{
-				location.reload();
-			}
 
 			function showLoggedInVisibleElements()
 			{
@@ -76,7 +72,7 @@
 				logout_button.onclick = async (event) =>
 				{
 					await AppClient.logout();
-					refreshContent();
+					PageHelper.refreshContent();
 				}
 			}
 
@@ -95,51 +91,15 @@
 					const posts = result ? result.posts : [];
 					if(posts.length === 0) { return; }
 					postIndex += 10;
+					const builtPosts = [];
 					for(post of posts)
 					{
-						const postContainer = document.createElement("div");
-						const usernameContainer = document.createElement("div");
-						const usernameSpan = document.createElement("span");
-						const userlevelSpan= document.createElement("span");
-						const messageContainer = document.createElement("div");
-						postContainer.className = "post_container";
-						usernameContainer.className = "post_username_container";
-						messageContainer.className = "post_message_container";
-						usernameContainer.appendChild(usernameSpan);
-						usernameContainer.appendChild(userlevelSpan);
-						usernameContainer.style.backgroundColor = determineUserLevelColor(post.level);
-						usernameSpan.innerText = post.username + " ";
-						userlevelSpan.innerText = determineUserLevelLabel(post.level);
-						userlevelSpan.style.fontSize = "10px";
-						messageContainer.innerText = post.message;
-						postContainer.appendChild(usernameContainer);
-						postContainer.appendChild(messageContainer);
-						post_list_display.appendChild(postContainer);
+						builtPosts.push(await PostHelper.buildPost(post));
 					}
-
-					function determineUserLevelColor(level)
+					for(element of builtPosts)
 					{
-						switch(level)
-						{
-							case "Silver":
-								return "rgba(255, 255, 255, 0.6)";
-							break;
-							case "Gold":
-								return "rgba(255, 255, 160, 1.0)";
-							break;
-							case "Platinum":
-								return "rgba(255, 255, 255, 0.7)";
-							break;
-							default:
-								return "rgba(190, 190, 190, 0.5)";
-							break;
-						}
+						post_list_display.appendChild(element);
 					}
-
-					function determineUserLevelLabel(level)
-					{
-						return "(" + ((!level || level.toLowerCase() === "user") ? "Basic" : level ) + " User)";
- 					}
 				}
 
 				await loadPosts();
@@ -166,7 +126,7 @@
 					const response = await AppClient.newPost({message});
 					hideLoader();
 					//todo: give user link to post
-					refreshContent();
+					PageHelper.refreshContent();
 				};
 
 				function showPostBox()
@@ -228,7 +188,7 @@
 				async function confirmLogin()
 				{
 					const user = await AppClient.getUser();
-					if(user.loggedin) { refreshContent(); }
+					if(user.loggedin) { PageHelper.refreshContent(); }
 					else { showError("Login operation failed. Check the other error messages and then try again."); }
 				}
 			}
@@ -261,8 +221,6 @@
 				return false;
 			}
 		})();
-
-
 	</script>
 	<link rel="stylesheet" href="base.css">
 	<style type="text/css">
@@ -285,7 +243,7 @@
 	#new_post_message_entry
 	{
 		border: none;
-		padding: 5px;
+		padding: 5px;		
 	}
 	#welcome_div
 	{
@@ -339,18 +297,25 @@
 		padding: 3px;
 		text-align: left;
 		background-color: rgba(255, 255, 255, 0.5);
-	}
-	.post_username_container::after
-	{
-		content: " posted:";
-		font-weight: normal;
+		border: 1px solid #b5b5b5;
+		border-bottom: none;
 	}
 	.post_message_container
 	{
 		height: 90%;
+		width: 100%;
 		padding: 7px;
 		text-align: left;
 		background-color: rgba(255, 255, 255, 0.8);
+		cursor: text;
+		border: 1px solid #b5b5b5;
+		border-top: none;
+	}
+	.post_interact_button
+	{
+		height: 100%;
+		width: 60px;
+		z-index: 10;
 	}
 	</style>
 </head>

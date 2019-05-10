@@ -7,8 +7,7 @@ module Api
 					results = []
 					posts.each do |post|
 						user = User.find(post.user_id)
-						puts user.level
-						results.push({ message: post.message, username: user.username, level: user.level })
+						results.push({ message: post.message, id: post.id, username: user.username, level: user.level })
 					end
 					render json: { posts: results }, status: 200
 				else
@@ -42,13 +41,36 @@ module Api
 				end
 			end
 
-			#update and destroy are not supported
 			def update
-				render json: {}, status: 405
+				status = 401
+				if cookies.signed[:user_id] && cookies[:remember_token]					
+					user = User.find(cookies.signed[:user_id])
+					if user.remember_token_authenticated?(cookies[:remember_token])
+						post = Post.find(params[:id])
+						if post.user_id == user.id
+							json_params = JSON.parse(request.raw_post)
+							Post.update(params[:id], message: json_params["message"])
+							status = 200
+						end
+					end
+				end
+				render json: {}, status: status
 			end
 
 			def destroy
-				render json: {}, status: 405
+				puts params[:id]
+				status = 401
+				if cookies.signed[:user_id] && cookies[:remember_token]					
+					user = User.find(cookies.signed[:user_id])
+					if user.remember_token_authenticated?(cookies[:remember_token])
+						post = Post.find(params[:id])
+						if post.user_id == user.id
+							Post.destroy(params[:id])
+							status = 200
+						end
+					end
+				end
+				render json: {}, status: status
 			end
 		end
 	end

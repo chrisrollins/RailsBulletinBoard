@@ -79,9 +79,23 @@ const AppClient = (function()
 		const res = await promise;
 		return { posts: res.body.posts };
 	}
+
+	async function deletePost({id})
+	{
+		const promise = HTTP.delete(`api/public/posts/${id}`);
+		pendingRequests.push(promise);
+		await awaitPending();
+	}
+
+	async function editPost({id, message})
+	{
+		const promise = HTTP.put(`api/public/posts/${id}`, {message});
+		pendingRequests.push(promise);
+		await awaitPending();
+	}
 	
 	return Object.freeze(
 	{
-		getUser, signup, login, logout, newPost, getPost, getPosts
+		getUser, signup, login, logout, newPost, getPost, getPosts, deletePost, editPost
 	});
 })();
